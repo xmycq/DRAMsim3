@@ -3,7 +3,7 @@
 
 #include <list>
 #include <queue>
-#include "memory_system.h"
+#include <string>
 
 class CoDRAMRequest {
 public:
@@ -41,7 +41,6 @@ public:
     inline uint64_t get_clock_ticks() { return dram_clock; }
 
 private:
-    dramsim3::MemorySystem memory;
     uint64_t dram_clock;
     uint64_t transcation_id;
     std::list<CoDRAMResponse*> req_list;

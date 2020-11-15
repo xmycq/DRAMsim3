@@ -1,30 +1,34 @@
 #include "cosimulation.h"
+#include "memory_system.h"
 
-// using namespace dramsim3;
+dramsim3::MemorySystem *memory = NULL;
 
 CoDRAMsim3::CoDRAMsim3(const std::string &config_file, const std::string &output_dir)
-    : memory(config_file, output_dir,
+        : dram_clock(0), transcation_id(0) {
+    if (memory) {
+        std::cout << "should only init one memory currently" << std::endl;
+        abort();
+    }
+    memory = new dramsim3::MemorySystem(config_file, output_dir,
         std::bind(&CoDRAMsim3::callback, this, std::placeholders::_1, false),
-        std::bind(&CoDRAMsim3::callback, this, std::placeholders::_1, true)),
-        dram_clock(0),
-        transcation_id(0) {
+        std::bind(&CoDRAMsim3::callback, this, std::placeholders::_1, true));
     std::cout << "DRAMsim3 memory system initialized." << std::endl;
 }
 
 void CoDRAMsim3::tick() {
-    memory.ClockTick();
+    memory->ClockTick();
     dram_clock++;
 }
 
 bool CoDRAMsim3::add_request(const CoDRAMRequest &request) {
-    if (memory.WillAcceptTransaction(request.address, request.is_write)) {
+    if (memory->WillAcceptTransaction(request.address, request.is_write)) {
         if (request.is_write) {
             std::cout << "send write request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
         }
         else {
             std::cout << "send read request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
         }
-        memory.AddTransaction(request.address, request.is_write);
+        memory->AddTransaction(request.address, request.is_write);
         req_list.push_back(new CoDRAMResponse(request, get_clock_ticks()));
         return true;
     }
