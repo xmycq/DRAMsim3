@@ -41,6 +41,12 @@ add_library(dramsim3 SHARED
     src/memory_system.cc
 )
 
+if (COSIM)
+    target_sources(dramsim3
+        PRIVATE src/cosimulation.cc
+    )
+endif(COSIM)
+
 if (THERMAL)
     # dependency check
     # sudo apt-get install libatlas-base-dev on ubuntu
