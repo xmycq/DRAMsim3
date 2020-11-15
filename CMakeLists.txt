@@ -26,7 +26,7 @@ add_library(json INTERFACE)
 target_include_directories(json INTERFACE ext/headers)
 
 # Main DRAMSim Lib
-add_library(dramsim3 SHARED
+add_library(dramsim3 STATIC
     src/bankstate.cc
     src/channel_state.cc
     src/command_queue.cc
