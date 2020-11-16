@@ -20,8 +20,16 @@ void CoDRAMsim3::tick() {
     dram_clock++;
 }
 
+bool CoDRAMsim3::will_accept(const CoDRAMRequest &request) {
+    return memory->WillAcceptTransaction(request.address, request.is_write);
+}
+
 bool CoDRAMsim3::add_request(const CoDRAMRequest &request) {
+#ifdef COSIM_DOUBLE_CHECK_ACCEPT
     if (memory->WillAcceptTransaction(request.address, request.is_write)) {
+#else
+    if (true) {
+#endif
         if (request.is_write) {
             std::cout << "send write request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
         }

@@ -33,7 +33,9 @@ public:
     CoDRAMsim3(const std::string &config_file, const std::string &output_dir);
     // Tick the DRAM model.
     void tick();
-    // Send request to CoDRAM model. Returns true on success and false on failure.
+    // Returns true on success and false on failure.
+    bool will_accept(const CoDRAMRequest &request);
+    // Send request to CoDRAM model.
     bool add_request(const CoDRAMRequest &request);
     // Check whether there is some response available. Returns NULL on failure.
     CoDRAMResponse *check_response();
