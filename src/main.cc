@@ -2,7 +2,7 @@
 #include "./../ext/headers/args.hxx"
 #include "cpu.h"
 #include "cosimulation.h"
-
+#include<time.h>
 using namespace dramsim3;
 
 // test co-simulation framework like StreamCPU
@@ -17,8 +17,9 @@ int cosim_main() {
     bool inserted_c_ = false;
     uint64_t addr_a_, addr_b_, addr_c_, offset_ = 0;
     uint64_t array_size_ = 0x100;
-
-    for (cpu_clock = 0; cpu_clock < 10000; cpu_clock++) {
+    clock_t start, end;
+    start = clock();
+    for (cpu_clock = 0; cpu_clock < 10000000; cpu_clock++) {
         if (offset_ >= array_size_ || cpu_clock == 0) {
             addr_a_ = cpu_clock << 10;
             addr_b_ = (cpu_clock << 20) + 0x100;
@@ -26,13 +27,16 @@ int cosim_main() {
             offset_ = 0;
         }
 
-        if (!inserted_a_ && dram->add_request(CoDRAMRequest(addr_a_ + offset_, false))) {
+        if (!inserted_a_ && dram->will_accept(addr_a_ + offset_, false)) {
+            dram->add_request(new CoDRAMRequest(addr_a_ + offset_, false));
             inserted_a_ = true;
         }
-        if (!inserted_b_ && dram->add_request(CoDRAMRequest(addr_b_ + offset_, false))) {
+        if (!inserted_b_ && dram->will_accept(addr_b_ + offset_, false)) {
+            dram->add_request(new CoDRAMRequest(addr_b_ + offset_, false));
             inserted_b_ = true;
         }
-        if (!inserted_c_ && dram->add_request(CoDRAMRequest(addr_c_ + offset_, true))) {
+        if (!inserted_c_ && dram->will_accept(addr_c_ + offset_, true)) {
+            dram->add_request(new CoDRAMRequest(addr_c_ + offset_, true));
             inserted_c_ = true;
         }
         // moving on to next element
@@ -45,14 +49,26 @@ int cosim_main() {
 
         dram->tick();
 
-        auto resp = dram->check_response();
+        auto resp = dram->check_read_response();
         if (resp) {
-            std::cout << "cycle " << std::dec << cpu_clock << " resp "
-              << "is_write " << std::dec << resp->req.is_write << " addr " << std::hex << resp->req.address << " "
-              << "req_time " << std::dec << resp->req_time << " finish_time " << resp->finish_time << " resp_time " << resp->resp_time <<  std::endl;
+            // std::cout << "cycle " << std::dec << cpu_clock << " resp "
+            //   << "is_write " << std::dec << resp->req.is_write << " addr " << std::hex << resp->req.address << " "
+            //   << "req_time " << std::dec << resp->req_time << " finish_time " << resp->finish_time << " resp_time " << resp->resp_time <<  std::endl;
+            delete resp->req;
+            delete resp;
+        }
+        resp = dram->check_write_response();
+        if (resp) {
+            // std::cout << "cycle " << std::dec << cpu_clock << " resp "
+            //   << "is_write " << std::dec << resp->req.is_write << " addr " << std::hex << resp->req.address << " "
+            //   << "req_time " << std::dec << resp->req_time << " finish_time " << resp->finish_time << " resp_time " << resp->resp_time <<  std::endl;
+            delete resp->req;
             delete resp;
         }
     }
+    end = clock();
+    std::cout << (double)(end-start)/CLOCKS_PER_SEC << std::endl;
+    delete dram;
     return 0;
 }
 

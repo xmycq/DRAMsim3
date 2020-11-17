@@ -15,35 +15,48 @@ CoDRAMsim3::CoDRAMsim3(const std::string &config_file, const std::string &output
     std::cout << "DRAMsim3 memory system initialized." << std::endl;
 }
 
+CoDRAMsim3::~CoDRAMsim3() {
+    memory->PrintStats();
+    delete memory;
+}
+
 void CoDRAMsim3::tick() {
     memory->ClockTick();
     dram_clock++;
 }
 
-bool CoDRAMsim3::will_accept(const CoDRAMRequest &request) {
-    return memory->WillAcceptTransaction(request.address, request.is_write);
+bool CoDRAMsim3::will_accept(uint64_t address, bool is_write) {
+    return memory->WillAcceptTransaction(address, is_write);
 }
 
-bool CoDRAMsim3::add_request(const CoDRAMRequest &request) {
+bool CoDRAMsim3::add_request(const CoDRAMRequest *request) {
 #ifdef COSIM_DOUBLE_CHECK_ACCEPT
-    if (memory->WillAcceptTransaction(request.address, request.is_write)) {
+    if (memory->WillAcceptTransaction(request->address, request->is_write)) {
 #else
     if (true) {
 #endif
-        if (request.is_write) {
-            std::cout << "send write request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
-        }
-        else {
-            std::cout << "send read request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
-        }
-        memory->AddTransaction(request.address, request.is_write);
+        // if (request.is_write) {
+        //     std::cout << "send write request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
+        // }
+        // else {
+        //     std::cout << "send read request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
+        // }
+        memory->AddTransaction(request->address, request->is_write);
         req_list.push_back(new CoDRAMResponse(request, get_clock_ticks()));
         return true;
     }
     return false;
 }
 
-CoDRAMResponse *CoDRAMsim3::check_response() {
+CoDRAMResponse *CoDRAMsim3::check_read_response() {
+    return check_response(resp_read_queue);
+}
+
+CoDRAMResponse *CoDRAMsim3::check_write_response() {
+    return check_response(resp_write_queue);
+}
+
+CoDRAMResponse *CoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &resp_queue) {
     if (resp_queue.empty())
         return NULL;
     auto resp = resp_queue.front();
@@ -53,16 +66,17 @@ CoDRAMResponse *CoDRAMsim3::check_response() {
 }
 
 void CoDRAMsim3::callback(uint64_t addr, bool is_write) {
-    std::cout << "cycle " << std::dec << get_clock_ticks() << " callback "
-              << "is_write " << std::dec << is_write << " addr " << std::hex << addr << std::endl;
+    // std::cout << "cycle " << std::dec << get_clock_ticks() << " callback "
+    //           << "is_write " << std::dec << is_write << " addr " << std::hex << addr << std::endl;
     // search for the first matched request
     auto iter = req_list.begin();
     while (iter != req_list.end()) {
         auto resp = *iter;
-        if (resp->req.address == addr && resp->req.is_write == is_write) {
+        if (resp->req->address == addr && resp->req->is_write == is_write) {
             req_list.erase(iter);
             resp->finish_time = get_clock_ticks();
-            resp_queue.push(resp);
+            auto &queue = (resp->req->is_write) ? resp_write_queue : resp_read_queue;
+            queue.push(resp);
             return;
         }
         iter++;
