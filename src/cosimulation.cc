@@ -35,11 +35,11 @@ bool CoDRAMsim3::add_request(const CoDRAMRequest *request) {
 #else
     if (true) {
 #endif
-        // if (request.is_write) {
-        //     std::cout << "send write request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
+        // if (request->is_write) {
+        //     std::cout << "send write request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
         // }
         // else {
-        //     std::cout << "send read request with addr 0x" << std::hex << request.address << " to DRAMsim3" << std::endl;
+        //     std::cout << "send read request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
         // }
         memory->AddTransaction(request->address, request->is_write);
         req_list.push_back(new CoDRAMResponse(request, get_clock_ticks()));
