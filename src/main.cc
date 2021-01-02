@@ -10,7 +10,7 @@ int cosim_main() {
     std::cout << "Testing DRAMsim3 co-simulation mode." << std::endl;
 
     uint64_t cpu_clock;
-    CoDRAMsim3 *dram = new CoDRAMsim3("configs/XiangShan.ini", "runs");
+    CoDRAMsim3 *dram = new ComplexCoDRAMsim3("configs/XiangShan.ini", "runs");
 
     bool inserted_a_ = false;
     bool inserted_b_ = false;

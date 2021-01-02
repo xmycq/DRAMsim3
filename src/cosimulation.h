@@ -33,9 +33,29 @@ public:
 
 class CoDRAMsim3 {
 public:
-    // Initialize a DRAMsim3 model.
-    CoDRAMsim3(const std::string &config_file, const std::string &output_dir);
-    ~CoDRAMsim3();
+    virtual ~CoDRAMsim3() { };
+    // Tick the co-sim model.
+    virtual void tick() = 0;
+    // Returns true on success and false on failure.
+    virtual bool will_accept(uint64_t address, bool is_write) = 0;
+    // Send request to co-sim model.
+    virtual bool add_request(const CoDRAMRequest *request) = 0;
+    // Check whether there is some read response available. Returns NULL on failure.
+    virtual CoDRAMResponse *check_read_response() = 0;
+    // Check whether there is some write response available. Returns NULL on failure.
+    virtual CoDRAMResponse *check_write_response() = 0;
+    // Get DRAM ticks.
+    inline uint64_t get_clock_ticks() { return dram_clock; }
+
+protected:
+    uint64_t dram_clock;
+};
+
+
+// A simple co-sim model: fixed read latency and zero write latency
+class SimpleCoDRAMsim3 : public CoDRAMsim3 {
+public:
+    SimpleCoDRAMsim3(int latency);
     // Tick the DRAM model.
     void tick();
     // Returns true on success and false on failure.
@@ -46,12 +66,30 @@ public:
     CoDRAMResponse *check_read_response();
     // Check whether there is some write response available. Returns NULL on failure.
     CoDRAMResponse *check_write_response();
-    // Get DRAM ticks.
-    inline uint64_t get_clock_ticks() { return dram_clock; }
 
 private:
-    uint64_t dram_clock;
-    uint64_t transcation_id;
+    int latency;
+    std::list<CoDRAMResponse*> resp_list;
+    CoDRAMResponse *check_response(bool is_write);
+};
+
+class ComplexCoDRAMsim3 : public CoDRAMsim3 {
+public:
+    // Initialize a DRAMsim3 model.
+    ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir);
+    ~ComplexCoDRAMsim3();
+    // Tick the DRAM model.
+    void tick();
+    // Returns true on success and false on failure.
+    bool will_accept(uint64_t address, bool is_write);
+    // Send request to CoDRAM model.
+    bool add_request(const CoDRAMRequest *request);
+    // Check whether there is some read response available. Returns NULL on failure.
+    CoDRAMResponse *check_read_response();
+    // Check whether there is some write response available. Returns NULL on failure.
+    CoDRAMResponse *check_write_response();
+
+private:
     std::list<CoDRAMResponse*> req_list;
     std::queue<CoDRAMResponse*> resp_read_queue;
     std::queue<CoDRAMResponse*> resp_write_queue;
@@ -60,9 +98,5 @@ private:
     // Check whether there is some response in the queue. Returns NULL on failure.
     CoDRAMResponse *check_response(std::queue<CoDRAMResponse*> &resp_queue);
 };
-
-
-
-
 
 #endif

@@ -3,33 +3,33 @@
 
 dramsim3::MemorySystem *memory = NULL;
 
-CoDRAMsim3::CoDRAMsim3(const std::string &config_file, const std::string &output_dir)
-        : dram_clock(0), transcation_id(0) {
+ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir) {
     if (memory) {
         std::cout << "should only init one memory currently" << std::endl;
         abort();
     }
+    dram_clock = 0;
     memory = new dramsim3::MemorySystem(config_file, output_dir,
-        std::bind(&CoDRAMsim3::callback, this, std::placeholders::_1, false),
-        std::bind(&CoDRAMsim3::callback, this, std::placeholders::_1, true));
+        std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, false),
+        std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, true));
     std::cout << "DRAMsim3 memory system initialized." << std::endl;
 }
 
-CoDRAMsim3::~CoDRAMsim3() {
+ComplexCoDRAMsim3::~ComplexCoDRAMsim3() {
     memory->PrintStats();
     delete memory;
 }
 
-void CoDRAMsim3::tick() {
+void ComplexCoDRAMsim3::tick() {
     memory->ClockTick();
     dram_clock++;
 }
 
-bool CoDRAMsim3::will_accept(uint64_t address, bool is_write) {
+bool ComplexCoDRAMsim3::will_accept(uint64_t address, bool is_write) {
     return memory->WillAcceptTransaction(address, is_write);
 }
 
-bool CoDRAMsim3::add_request(const CoDRAMRequest *request) {
+bool ComplexCoDRAMsim3::add_request(const CoDRAMRequest *request) {
 #ifdef COSIM_DOUBLE_CHECK_ACCEPT
     if (memory->WillAcceptTransaction(request->address, request->is_write)) {
 #else
@@ -48,15 +48,15 @@ bool CoDRAMsim3::add_request(const CoDRAMRequest *request) {
     return false;
 }
 
-CoDRAMResponse *CoDRAMsim3::check_read_response() {
+CoDRAMResponse *ComplexCoDRAMsim3::check_read_response() {
     return check_response(resp_read_queue);
 }
 
-CoDRAMResponse *CoDRAMsim3::check_write_response() {
+CoDRAMResponse *ComplexCoDRAMsim3::check_write_response() {
     return check_response(resp_write_queue);
 }
 
-CoDRAMResponse *CoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &resp_queue) {
+CoDRAMResponse *ComplexCoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &resp_queue) {
     if (resp_queue.empty())
         return NULL;
     auto resp = resp_queue.front();
@@ -65,7 +65,7 @@ CoDRAMResponse *CoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &resp_que
     return resp;
 }
 
-void CoDRAMsim3::callback(uint64_t addr, bool is_write) {
+void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
     // std::cout << "cycle " << std::dec << get_clock_ticks() << " callback "
     //           << "is_write " << std::dec << is_write << " addr " << std::hex << addr << std::endl;
     // search for the first matched request
@@ -84,4 +84,63 @@ void CoDRAMsim3::callback(uint64_t addr, bool is_write) {
     std ::cout << "INTERNAL ERROR: Do not find matched request for this response "
                << "(0x" << std::hex << addr << ", " << is_write << ")." << std::endl;
     abort();
+}
+
+SimpleCoDRAMsim3::SimpleCoDRAMsim3(int latency) : latency(latency) {
+    dram_clock = 0;
+    std::cout << "Simple memory system with " << latency << "-cycle latency initialized." << std::endl;
+}
+
+void SimpleCoDRAMsim3::tick() {
+    dram_clock++;
+}
+
+bool SimpleCoDRAMsim3::will_accept(uint64_t address, bool is_write) {
+    return true;
+}
+
+bool SimpleCoDRAMsim3::add_request(const CoDRAMRequest *request) {
+#ifdef COSIM_DOUBLE_CHECK_ACCEPT
+    if (this->will_accept(request->address, request->is_write)) {
+#else
+    if (true) {
+#endif
+        // if (request->is_write) {
+        //     std::cout << "send write request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
+        // }
+        // else {
+        //     std::cout << "send read request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
+        // }
+        auto now = get_clock_ticks();
+        auto resp = new CoDRAMResponse(request, now);
+        resp->finish_time = now + this->latency;
+        resp_list.push_back(resp);
+        return true;
+    }
+    return false;
+}
+
+CoDRAMResponse *SimpleCoDRAMsim3::check_read_response() {
+    return check_response(false);
+}
+
+CoDRAMResponse *SimpleCoDRAMsim3::check_write_response() {
+    return check_response(true);
+}
+
+CoDRAMResponse *SimpleCoDRAMsim3::check_response(bool is_write) {
+    if (resp_list.empty())
+        return NULL;
+    auto now = get_clock_ticks();
+    auto iter = resp_list.begin();
+    while (iter != resp_list.end()) {
+        auto resp = *iter;
+        if (resp->req->is_write == is_write && resp->finish_time <= now) {
+            resp_list.erase(iter);
+            resp->resp_time = now;
+            return resp;
+        }
+        iter++;
+    }
+    return NULL;
 }
