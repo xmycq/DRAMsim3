@@ -3,7 +3,7 @@
 
 dramsim3::MemorySystem *memory = NULL;
 
-ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir) {
+ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir, uint64_t padding_time) {
     if (memory) {
         std::cout << "should only init one memory currently" << std::endl;
         abort();
@@ -12,6 +12,7 @@ ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::
     memory = new dramsim3::MemorySystem(config_file, output_dir,
         std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, false),
         std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, true));
+    padding = padding_time;
     std::cout << "DRAMsim3 memory system initialized." << std::endl;
 }
 
@@ -60,9 +61,13 @@ CoDRAMResponse *ComplexCoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &r
     if (resp_queue.empty())
         return NULL;
     auto resp = resp_queue.front();
-    resp_queue.pop();
-    resp->resp_time = get_clock_ticks();
-    return resp;
+    auto now = get_clock_ticks();
+    if (resp->finish_time <= now) {
+        resp->resp_time = now;
+        resp_queue.pop();
+        return resp;
+    }
+    return NULL;
 }
 
 void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
@@ -74,7 +79,7 @@ void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
         auto resp = *iter;
         if (resp->req->address == addr && resp->req->is_write == is_write) {
             req_list.erase(iter);
-            resp->finish_time = get_clock_ticks();
+            resp->finish_time = get_clock_ticks() + padding;
             auto &queue = (resp->req->is_write) ? resp_write_queue : resp_read_queue;
             queue.push(resp);
             return;
