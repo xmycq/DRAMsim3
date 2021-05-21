@@ -24,9 +24,14 @@ we also supply a Makefile to build the most basic version of the simulator.
 Doing out of source builds with CMake is recommended to avoid the build files cluttering the main directory.
 
 ```bash
-# cmake out of source build
+# make directory for build
 mkdir build
 cd build
+
+# cmake out of source build
+# if co-simulation
+cmake -D COSIM=1 ..
+# else
 cmake ..
 
 # Build dramsim3 library and executables
