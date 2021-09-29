@@ -77,7 +77,7 @@ class ComplexCoDRAMsim3 : public CoDRAMsim3 {
 public:
     // Initialize a DRAMsim3 model.
     ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir,
-        uint64_t padding_time = 40);
+        uint64_t padding_time = 80);
     ~ComplexCoDRAMsim3();
     // Tick the DRAM model.
     void tick();
@@ -91,7 +91,10 @@ public:
     CoDRAMResponse *check_write_response();
 
 private:
+    // CPU runs at 2GHz and DRAM runs at 1200MHz
+    const double CPU_FREQ_SCALE = 2000 / 1200;
     uint64_t padding = 0;
+
     std::list<CoDRAMResponse*> req_list;
     std::queue<CoDRAMResponse*> resp_read_queue;
     std::queue<CoDRAMResponse*> resp_write_queue;
