@@ -79,7 +79,7 @@ void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
         auto resp = *iter;
         if (resp->req->address == addr && resp->req->is_write == is_write) {
             req_list.erase(iter);
-            resp->finish_time = get_clock_ticks() + padding;
+            resp->finish_time = resp->req_time + (get_clock_ticks() - resp->req_time) * CPU_FREQ_SCALE + padding;
             auto &queue = (resp->req->is_write) ? resp_write_queue : resp_read_queue;
             queue.push(resp);
             return;
