@@ -42,6 +42,7 @@ bool ComplexCoDRAMsim3::add_request(const CoDRAMRequest *request) {
         // else {
         //     std::cout << "send read request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
         // }
+        std::lock_guard<std::mutex> guard(mtx);
         memory->AddTransaction(request->address, request->is_write);
         req_list.push_back(new CoDRAMResponse(request, get_clock_ticks()));
         return true;
@@ -58,6 +59,7 @@ CoDRAMResponse *ComplexCoDRAMsim3::check_write_response() {
 }
 
 CoDRAMResponse *ComplexCoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &resp_queue) {
+    std::lock_guard<std::mutex> guard(mtx);
     if (resp_queue.empty())
         return NULL;
     auto resp = resp_queue.front();
@@ -74,6 +76,7 @@ void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
     // std::cout << "cycle " << std::dec << get_clock_ticks() << " callback "
     //           << "is_write " << std::dec << is_write << " addr " << std::hex << addr << std::endl;
     // search for the first matched request
+    std::lock_guard<std::mutex> guard(mtx);
     auto iter = req_list.begin();
     while (iter != req_list.end()) {
         auto resp = *iter;
