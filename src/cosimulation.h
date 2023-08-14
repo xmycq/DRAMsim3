@@ -4,6 +4,7 @@
 #include <list>
 #include <queue>
 #include <string>
+#include <mutex>
 
 class CoDRAMRequest {
 public:
@@ -94,6 +95,7 @@ private:
     // CPU runs at 2GHz and DRAM runs at 1200MHz
     const double CPU_FREQ_SCALE = 2000.0 / 1200.0;
     uint64_t padding = 0;
+    std::mutex mtx;
 
     std::list<CoDRAMResponse*> req_list;
     std::queue<CoDRAMResponse*> resp_read_queue;
