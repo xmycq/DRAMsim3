@@ -45,6 +45,11 @@ cmake .. -DTHERMAL=1
 The build process creates `dramsim3main` and executables in the `build` directory.
 By default, it also creates `libdramsim3.so` shared library in the project root directory.
 
+If you only need libdramsim3.so, you can also use it in main directory.
+```
+make all
+```
+
 ### Running
 
 ```bash
