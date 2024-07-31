@@ -1,5 +1,6 @@
 #include "cosimulation.h"
 #include "memory_system.h"
+#include "assert.h"
 
 dramsim3::MemorySystem *memory = NULL;
 
@@ -152,4 +153,62 @@ CoDRAMResponse *SimpleCoDRAMsim3::check_response(bool is_write) {
         iter++;
     }
     return NULL;
+}
+
+CoDRAMsim3 *dram = NULL;
+
+struct dramsim3_meta {
+  uint32_t mshrId;
+};
+
+extern "C" void dramsim3_init(const char* config_file, const char* output_dir) {
+    assert(dram == NULL);
+    printf("[%s:%s:%d] dramsim3 init.\n", __FILE__, __FUNCTION__, __LINE__);
+    dram = new ComplexCoDRAMsim3(config_file, output_dir);
+}
+
+extern "C" void dramsim3_clock() {
+    dram->tick();
+}
+
+extern "C" void dramsim3_clean() {
+    assert(dram != NULL);
+    printf("[%s:%s:%d] dramsim3 clean.\n", __FILE__, __FUNCTION__, __LINE__);
+    delete dram;
+    dram = NULL;
+}
+
+extern "C" bool dramsim3_request(uint64_t address, bool isWrite, uint32_t mshrId) {
+    if (dram->will_accept(address, isWrite)) {
+        auto meta = new dramsim3_meta;
+        meta->mshrId = mshrId;
+        auto req = new CoDRAMRequest(address, isWrite, meta);
+        dram->add_request(req);
+        return true;
+    }
+    return false;
+}
+
+extern "C" uint32_t dramsim3_read_response() {
+    auto response = dram->check_read_response();
+    if (response) {
+        auto meta = static_cast<dramsim3_meta *>(response->req->meta);
+        uint32_t mshrId = meta->mshrId;
+        delete meta;
+        delete response;
+        return mshrId;
+    }
+    return static_cast<uint32_t>(1UL) << 31; 
+}
+
+extern "C" uint32_t dramsim3_write_response() {
+    auto response = dram->check_write_response();
+    if (response) {
+        auto meta = static_cast<dramsim3_meta *>(response->req->meta);
+        uint32_t mshrId = meta->mshrId;
+        delete meta;
+        delete response;
+        return mshrId;
+    }
+    return static_cast<uint32_t>(1UL) << 31;
 }
